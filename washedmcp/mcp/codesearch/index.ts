@@ -1,6 +1,7 @@
 import { Tool, Resource, SchemaConstraint, Optional } from "@leanmcp/core";
 import { spawn } from "child_process";
 import * as path from "path";
+import { fileURLToPath } from "url";
 
 /**
  * WashedMCP Code Search Service
@@ -8,6 +9,10 @@ import * as path from "path";
  * Provides semantic code search to reduce token usage by ~70%
  * Uses vector embeddings to find code by meaning, not just name
  */
+
+// ES Module fix for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Path to our Python CLI
 const CLI_PATH = path.join(__dirname, "../../../src/cli.py");
