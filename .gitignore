@@ -1,3 +1,20 @@
 node_modules/
-
 */node_modules/
+
+# Front-end
+washedmcp-frontend/node_modules
+washedmcp-frontend/.next
+washedmcp-frontend/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Database (local index)
+.washedmcp/
+
+# IDE
+.vscode/
+.idea/
