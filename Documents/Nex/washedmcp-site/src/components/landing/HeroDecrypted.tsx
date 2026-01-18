@@ -27,7 +27,7 @@ export default function HeroDecrypted() {
         sequential
         speed={12}
         maxIterations={18}
-        parentClassName="hero-title block text-5xl leading-[0.95] sm:text-6xl"
+        parentClassName="hero-title block text-5xl font-bold leading-[0.95] sm:text-6xl"
         className="text-white"
         encryptedClassName="text-white/18"
       />

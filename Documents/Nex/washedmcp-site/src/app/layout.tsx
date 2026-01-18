@@ -3,6 +3,7 @@ import "./globals.css";
 
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "WashedMCP",
@@ -20,6 +21,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
+        <Script
+          id="orchids-browser-logs"
+          src="https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/scripts/orchids-browser-logs.js"
+          strategy="afterInteractive"
+          data-orchids-project-id="177c3580-b3f2-4493-9776-8a8d9c72a70c"
+        />
         {children}
       </body>
     </html>

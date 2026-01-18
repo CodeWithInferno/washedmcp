@@ -23,7 +23,7 @@ export default function PixelBackdrop() {
   );
 
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 noise-layer">
+    <div className="pointer-events-none fixed inset-0 z-0 noise-layer">
       {/* subtle base glow */}
       <div className="absolute inset-0 soft-radial" />
 
