@@ -20,9 +20,10 @@ def _get_model() -> SentenceTransformer:
     """Get or create the model lazily."""
     global _model
     if _model is None:
-        print("Loading embedding model (first time only)...")
+        print("Downloading embedding model (~100MB, first time only)...")
+        print("This may take a minute on slow connections...")
         _model = SentenceTransformer(MODEL_NAME)
-        print("Model loaded.")
+        print("Model ready!")
     return _model
 
 

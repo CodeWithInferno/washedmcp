@@ -1,0 +1,61 @@
+[project]
+name = "washedmcp"
+version = "0.1.0"
+description = "Semantic code search MCP server - find code by meaning, not just name"
+readme = "docs/README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.9"
+keywords = ["mcp", "code-search", "semantic-search", "embeddings", "claude"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "chromadb>=0.4.0",
+    "tree-sitter>=0.24.0",
+    "tree-sitter-python>=0.23.0",
+    "tree-sitter-javascript>=0.23.0",
+    "tree-sitter-typescript>=0.23.0",
+    "sentence-transformers>=2.0.0",
+    "mcp>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=23.0",
+]
+summarize = [
+    "anthropic>=0.18.0",
+]
+
+[project.scripts]
+washedmcp = "src.mcp_server:main"
+
+[project.urls]
+Homepage = "https://github.com/clarsbyte/washedmcp"
+Repository = "https://github.com/clarsbyte/washedmcp"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/docs",
+    "/tests",
+    "/LICENSE",
+    "/marketplace.json",
+]

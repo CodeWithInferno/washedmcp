@@ -29,7 +29,7 @@ SKIP_DIRS = {
 
 def index_codebase(
     path: str,
-    persist_path: str = "./.washedmcp/chroma",
+    persist_path: str = None,
     skip_summarize: bool = True  # Default True = no API needed
 ) -> dict:
     """
@@ -37,7 +37,8 @@ def index_codebase(
 
     Args:
         path: Path to the codebase directory to index
-        persist_path: Path where ChromaDB will persist data
+        persist_path: Path where ChromaDB will persist data.
+                      If None, defaults to <path>/.washedmcp/chroma
         skip_summarize: If True, skip summarization step (use empty strings)
 
     Returns:
@@ -45,6 +46,10 @@ def index_codebase(
     """
     # Convert to absolute path
     abs_path = os.path.abspath(path)
+
+    # Default persist_path: store index inside the indexed project
+    if persist_path is None:
+        persist_path = os.path.join(abs_path, ".washedmcp", "chroma")
 
     print(f"Starting indexing of: {abs_path}")
     print(f"Database path: {persist_path}")
@@ -204,8 +209,14 @@ def index_codebase(
 
 
 if __name__ == "__main__":
-    # Index the test codebase
-    test_path = "/Users/pratham/Wash/washedmcp/tests/test_codebase"
+    import sys
+
+    # Index the test codebase or path provided via command line
+    if len(sys.argv) > 1:
+        test_path = sys.argv[1]
+    else:
+        # Default to tests/test_codebase relative to this file
+        test_path = os.path.join(os.path.dirname(__file__), "..", "tests", "test_codebase")
 
     print("=" * 60)
     print("CODEBASE INDEXER")

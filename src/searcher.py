@@ -1,5 +1,7 @@
 """Semantic code search using embeddings and vector database."""
 
+from __future__ import annotations
+
 import os
 from src.embedder import embed_query
 from src.database import init_db, search as db_search, get_stats, get_function_context
@@ -7,23 +9,31 @@ from src.database import init_db, search as db_search, get_stats, get_function_c
 
 def search_code(
     query: str,
-    persist_path: str = "./.washedmcp/chroma",
+    persist_path: str = None,
     top_k: int = 5,
-    depth: int = 0
-) -> list[dict] | dict:
+    depth: int = 0,
+    project_path: str = None
+):
     """
     Search for code snippets semantically similar to the query.
 
     Args:
         query: Natural language search query
-        persist_path: Path to the ChromaDB persistence directory
+        persist_path: Path to the ChromaDB persistence directory.
+                      If None and project_path provided, derives from project_path.
         top_k: Number of results to return
         depth: If > 0, return expanded context for the best match
+        project_path: Path to the indexed project (used to derive persist_path)
 
     Returns:
         List of matching code snippets with metadata and similarity scores,
         or dict with "results" and "context" keys if depth > 0
     """
+    # Derive persist_path from project_path if not explicitly provided
+    if persist_path is None and project_path:
+        persist_path = os.path.join(os.path.abspath(project_path), ".washedmcp", "chroma")
+    elif persist_path is None:
+        persist_path = "./.washedmcp/chroma"  # Fallback for backward compatibility
     try:
         # Initialize database
         init_db(persist_path=persist_path)
@@ -55,16 +65,24 @@ def search_code(
         return []
 
 
-def is_indexed(persist_path: str = "./.washedmcp/chroma") -> bool:
+def is_indexed(persist_path: str = None, project_path: str = None) -> bool:
     """
     Check if the database exists and contains indexed items.
 
     Args:
-        persist_path: Path to the ChromaDB persistence directory
+        persist_path: Path to the ChromaDB persistence directory.
+                      If None and project_path provided, derives from project_path.
+        project_path: Path to the indexed project (used to derive persist_path)
 
     Returns:
         True if database exists and has items, False otherwise
     """
+    # Derive persist_path from project_path if not explicitly provided
+    if persist_path is None and project_path:
+        persist_path = os.path.join(os.path.abspath(project_path), ".washedmcp", "chroma")
+    elif persist_path is None:
+        persist_path = "./.washedmcp/chroma"  # Fallback for backward compatibility
+
     try:
         if not os.path.exists(persist_path):
             return False
@@ -79,23 +97,26 @@ def is_indexed(persist_path: str = "./.washedmcp/chroma") -> bool:
 
 def search_code_with_context(
     query: str,
-    persist_path: str = "./.washedmcp/chroma",
+    persist_path: str = None,
     top_k: int = 5,
-    depth: int = 1
+    depth: int = 1,
+    project_path: str = None
 ) -> dict:
     """
     Search for code with expanded context (callers, callees, same-file functions).
 
     Args:
         query: Natural language search query
-        persist_path: Path to the ChromaDB persistence directory
+        persist_path: Path to the ChromaDB persistence directory.
+                      If None and project_path provided, derives from project_path.
         top_k: Number of results to return
         depth: How many hops of relationships to include
+        project_path: Path to the indexed project (used to derive persist_path)
 
     Returns:
         Dict with "results" and "context" keys
     """
-    results = search_code(query, persist_path, top_k)
+    results = search_code(query, persist_path, top_k, project_path=project_path)
 
     context = None
     if results and depth > 0:

@@ -1,0 +1,35 @@
+{
+  "name": "washedmcp",
+  "displayName": "WashedMCP - Semantic Code Search",
+  "description": "Search code by meaning, not just name. Uses embeddings for semantic understanding of your codebase.",
+  "version": "0.1.0",
+  "publisher": "clarsbyte",
+  "repository": "https://github.com/clarsbyte/washedmcp",
+  "tools": [
+    {
+      "name": "index_codebase",
+      "description": "Index a codebase for semantic search. Run once per project."
+    },
+    {
+      "name": "search_code",
+      "description": "Search for code by meaning. ALWAYS use FIRST when user asks about code/bugs/functions."
+    },
+    {
+      "name": "get_index_status",
+      "description": "Check if codebase is indexed."
+    }
+  ],
+  "installation": {
+    "type": "pip",
+    "package": "washedmcp"
+  },
+  "configuration": {
+    "command": "washedmcp",
+    "args": []
+  },
+  "requirements": {
+    "python": ">=3.9"
+  },
+  "keywords": ["semantic-search", "code-search", "embeddings", "vector-database"],
+  "categories": ["Code Intelligence", "Search"]
+}

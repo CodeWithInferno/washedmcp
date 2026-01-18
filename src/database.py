@@ -2,6 +2,8 @@
 Chroma vector database module for storing and searching code embeddings.
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 import os

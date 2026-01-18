@@ -9,6 +9,8 @@ Extracts:
 - React components (function and class-based)
 """
 
+from __future__ import annotations
+
 import os
 from typing import Optional
 
@@ -945,7 +947,8 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         test_file = sys.argv[1]
     else:
-        test_file = "/Users/pratham/Wash/washedmcp/tests/test_codebase/utils.py"
+        # Default to tests/test_codebase/utils.py relative to this file
+        test_file = os.path.join(os.path.dirname(__file__), "..", "tests", "test_codebase", "utils.py")
 
     results = extract_functions(test_file)
     print(f"Found {len(results)} entities in {test_file}:\n")

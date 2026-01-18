@@ -8,6 +8,12 @@ import sys
 import os
 import asyncio
 
+# Python version check
+if sys.version_info < (3, 9):
+    sys.exit("WashedMCP requires Python 3.9 or higher. You have Python {}.{}.".format(
+        sys.version_info.major, sys.version_info.minor
+    ))
+
 # Add parent to path BEFORE importing mcp
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -18,6 +24,9 @@ from mcp.types import Tool, TextContent
 
 # Create server
 server = Server("washedmcp")
+
+# Track the currently indexed project path
+_indexed_project_path = None
 
 
 @server.list_tools()
@@ -57,6 +66,8 @@ async def list_tools():
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict):
+    global _indexed_project_path
+
     try:
         # Lazy imports
         from src.indexer import index_codebase
@@ -67,6 +78,9 @@ async def call_tool(name: str, arguments: dict):
             path = arguments.get("path")
             if not path:
                 return [TextContent(type="text", text="Error: path required")]
+
+            # Store the project path for later searches
+            _indexed_project_path = os.path.abspath(path)
 
             res = index_codebase(path, skip_summarize=True)
             if res["status"] == "success":
@@ -79,14 +93,15 @@ async def call_tool(name: str, arguments: dict):
             if not query:
                 return [TextContent(type="text", text="Error: query required")]
 
-            if not is_indexed():
+            if not is_indexed(project_path=_indexed_project_path):
                 text = "Not indexed. Run index_codebase first."
             else:
                 depth = arguments.get("depth", 1)
                 result = search_code_with_context(
                     query,
                     top_k=arguments.get("top_k", 5),
-                    depth=depth
+                    depth=depth,
+                    project_path=_indexed_project_path
                 )
                 if result["results"]:
                     from src.toon_formatter import format_results_rich
@@ -95,7 +110,7 @@ async def call_tool(name: str, arguments: dict):
                     text = "No results."
 
         elif name == "get_index_status":
-            if is_indexed():
+            if is_indexed(project_path=_indexed_project_path):
                 from src.database import get_stats
                 stats = get_stats()
                 text = f"Indexed: {stats['total_functions']} functions"
@@ -110,10 +125,15 @@ async def call_tool(name: str, arguments: dict):
         return [TextContent(type="text", text=f"Error: {e}")]
 
 
-async def main():
+async def _async_main():
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, server.create_initialization_options())
 
 
+def main():
+    """Entry point for the washedmcp CLI command."""
+    asyncio.run(_async_main())
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
