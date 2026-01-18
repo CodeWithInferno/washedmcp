@@ -157,6 +157,16 @@ Control how many hops of relationships to include:
 search_code(query="validation", depth=2)
 ```
 
+
+WashedMCP also includes a recommendation and auto installation MCP pipeline built with LeanMCP.
+
+It uses tool call interception with hooks and tool call memory to:
+- Recommend MCP tools based on repeated assistant behavior
+- Auto install and configure MCP tools to remove setup friction
+- Reduce repeated lookups by remembering previous tool usage patterns
+
+This turns the MCP tool layer into something that improves over time during longer coding sessions.
+
 ## License
 
 MIT
