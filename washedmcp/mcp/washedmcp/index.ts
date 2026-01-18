@@ -2,6 +2,11 @@ import { Tool, Resource, SchemaConstraint, Optional } from "@leanmcp/core";
 import * as fs from "fs";
 import * as path from "path";
 
+// Import from orchestrator modules
+import { updateMcpConfig, ConfigLocation } from "../orchestrator/server-manager.js";
+import { validateEnvVars, getTokenFormatHint } from "../orchestrator/validation.js";
+import { recommendWithAI, formatRecommendations } from "../orchestrator/recommendation-engine.js";
+
 /**
  * washedMCP Service - MCP Recommender and Auto-Installer
  *
@@ -19,43 +24,6 @@ function loadMCPMetadata(): Record<string, any> {
     return JSON.parse(fs.readFileSync(metadataPath, "utf-8"));
   }
   return { mcps: {} };
-}
-
-/**
- * Update .mcp.json config file with server configuration
- */
-function updateMcpConfig(
-  serverName: string,
-  config: {
-    command: string;
-    args?: string[];
-    env?: Record<string, string>;
-  }
-): boolean {
-  try {
-    const mcpJsonPath = path.join(process.cwd(), ".mcp.json");
-    let mcpConfig: any = { mcpServers: {} };
-
-    if (fs.existsSync(mcpJsonPath)) {
-      mcpConfig = JSON.parse(fs.readFileSync(mcpJsonPath, "utf-8"));
-    }
-
-    mcpConfig.mcpServers = mcpConfig.mcpServers || {};
-    mcpConfig.mcpServers[serverName] = {
-      type: "stdio",
-      command: config.command,
-      args: config.args || [],
-      env: config.env || {}
-    };
-
-    fs.writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2));
-    console.log(`[washedMCP] Updated .mcp.json with ${serverName}`);
-
-    return true;
-  } catch (error) {
-    console.error("[washedMCP] Error updating .mcp.json:", error);
-    return false;
-  }
 }
 
 // Load tool calls from JSON
@@ -130,10 +98,24 @@ export class washedMCPService {
     inputClass: RecommendInput
   })
   async recommendMCPServers(input: RecommendInput) {
+    // Try AI-powered recommendations first (searches Smithery registry)
+    const aiResult = await recommendWithAI(input.user_context);
+
+    if (aiResult.success && aiResult.recommendations.length > 0) {
+      // Format the AI recommendations
+      const formatted = formatRecommendations(aiResult);
+      return {
+        content: [{
+          type: "text" as const,
+          text: formatted
+        }]
+      };
+    }
+
+    // Fall back to local metadata keyword matching
     const metadata = loadMCPMetadata();
     const mcps = Object.values(metadata.mcps || {}) as any[];
 
-    // Simple keyword matching (in production, use AI like Gemini)
     const context = input.user_context.toLowerCase();
     const matches = mcps.filter((mcp: any) => {
       const name = (mcp.name || "").toLowerCase();
@@ -142,18 +124,23 @@ export class washedMCPService {
       const useCases = (mcp.use_cases || []).join(" ").toLowerCase();
 
       return context.split(" ").some((word: string) =>
-        name.includes(word) ||
-        desc.includes(word) ||
-        capabilities.includes(word) ||
-        useCases.includes(word)
+        word.length > 2 && (
+          name.includes(word) ||
+          desc.includes(word) ||
+          capabilities.includes(word) ||
+          useCases.includes(word)
+        )
       );
     });
 
     if (matches.length === 0) {
+      const errorMsg = aiResult.error
+        ? `AI search: ${aiResult.error}\n\n`
+        : "";
       return {
         content: [{
           type: "text" as const,
-          text: `No MCP servers found matching: "${input.user_context}"\n\nUse list_all_mcp_servers to see all available options.`
+          text: `${errorMsg}No MCP servers found matching: "${input.user_context}"\n\nUse list_all_mcp_servers to see all available options.`
         }]
       };
     }
@@ -165,7 +152,7 @@ export class washedMCPService {
     return {
       content: [{
         type: "text" as const,
-        text: `# Recommended MCP Servers\n\n${formatted}\n\n## Next Steps\nUse install_mcp_server("MCP Name") to install any of these.`
+        text: `# Recommended MCP Servers (from local database)\n\n${formatted}\n\n## Next Steps\nUse install_mcp_server("MCP Name") to install any of these.`
       }]
     };
   }
@@ -243,6 +230,39 @@ export class washedMCPService {
         }
       } else {
         providedEnvVars = input.env_vars;
+      }
+    }
+
+    // Validate provided env vars format (warn-only mode by default)
+    if (Object.keys(providedEnvVars).length > 0) {
+      const validationResult = validateEnvVars(providedEnvVars);
+
+      // Log warnings but don't block installation
+      if (validationResult.warnings.length > 0) {
+        console.log("[washedMCP] Token format warnings:", validationResult.warnings);
+      }
+
+      // In strict mode (if ever enabled), errors would block installation
+      if (!validationResult.isValid && validationResult.errors.length > 0) {
+        const errorDetails = validationResult.errors.map(e => ({
+          name: e.varName,
+          error: e.message,
+          hint: e.hint || getTokenFormatHint(e.varName)
+        }));
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              success: false,
+              validation_failed: true,
+              mcp_name: mcp.name,
+              errors: errorDetails,
+              message: "Token format validation failed. Please check your credentials.",
+              note: "If you believe this is a valid token, you can retry with strict validation disabled."
+            }, null, 2)
+          }]
+        };
       }
     }
 

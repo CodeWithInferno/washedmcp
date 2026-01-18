@@ -5,7 +5,32 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import * as os from "os";
 import { SmitheryServer } from "./smithery.js";
+
+/**
+ * Configuration location options
+ * - local: .mcp.json in current working directory
+ * - global: ~/.claude.json (Claude Code global config)
+ * - both: Write to both locations
+ */
+export type ConfigLocation = "local" | "global" | "both";
+
+export interface ServerConfig {
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
+export interface ClaudeConfig {
+  mcpServers?: Record<string, {
+    type: string;
+    command: string;
+    args?: string[];
+    env?: Record<string, string>;
+  }>;
+  [key: string]: any;
+}
 
 export interface InstalledServer {
   qualifiedName: string;
@@ -174,18 +199,77 @@ export function getDisconnectedServers(): InstalledServer[] {
 }
 
 /**
- * Update .mcp.json config file with server configuration
+ * Get the path to Claude Code global config file
  */
-export function updateMcpConfig(
-  serverName: string,
-  config: {
-    command: string;
-    args?: string[];
-    env?: Record<string, string>;
+export function getClaudeConfigPath(): string {
+  return path.join(os.homedir(), ".claude.json");
+}
+
+/**
+ * Get the path to local .mcp.json config file
+ */
+export function getLocalConfigPath(): string {
+  return path.join(process.cwd(), ".mcp.json");
+}
+
+/**
+ * Read Claude Code global config
+ */
+export function readClaudeConfig(): ClaudeConfig | null {
+  try {
+    const configPath = getClaudeConfigPath();
+    if (fs.existsSync(configPath)) {
+      return JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    }
+    return null;
+  } catch (error) {
+    console.error("[ServerManager] Error reading Claude config:", error);
+    return null;
   }
+}
+
+/**
+ * Write server configuration to Claude Code global config
+ */
+export function writeClaudeConfig(
+  serverName: string,
+  config: ServerConfig
 ): boolean {
   try {
-    const mcpJsonPath = path.join(process.cwd(), ".mcp.json");
+    const configPath = getClaudeConfigPath();
+    let claudeConfig: ClaudeConfig = { mcpServers: {} };
+
+    if (fs.existsSync(configPath)) {
+      claudeConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    }
+
+    claudeConfig.mcpServers = claudeConfig.mcpServers || {};
+    claudeConfig.mcpServers[serverName] = {
+      type: "stdio",
+      command: config.command,
+      args: config.args || [],
+      env: config.env || {}
+    };
+
+    fs.writeFileSync(configPath, JSON.stringify(claudeConfig, null, 2));
+    console.log(`[ServerManager] Updated ~/.claude.json with ${serverName}`);
+
+    return true;
+  } catch (error) {
+    console.error("[ServerManager] Error writing Claude config:", error);
+    return false;
+  }
+}
+
+/**
+ * Write server configuration to local .mcp.json
+ */
+function writeLocalConfig(
+  serverName: string,
+  config: ServerConfig
+): boolean {
+  try {
+    const mcpJsonPath = getLocalConfigPath();
     let mcpConfig: any = { mcpServers: {} };
 
     if (fs.existsSync(mcpJsonPath)) {
@@ -211,11 +295,34 @@ export function updateMcpConfig(
 }
 
 /**
- * Remove server from .mcp.json config
+ * Update MCP config file with server configuration
+ * Supports local (.mcp.json), global (~/.claude.json), or both
  */
-export function removeFromMcpConfig(serverName: string): boolean {
+export function updateMcpConfig(
+  serverName: string,
+  config: ServerConfig,
+  location: ConfigLocation = "local"
+): boolean {
+  let localSuccess = true;
+  let globalSuccess = true;
+
+  if (location === "local" || location === "both") {
+    localSuccess = writeLocalConfig(serverName, config);
+  }
+
+  if (location === "global" || location === "both") {
+    globalSuccess = writeClaudeConfig(serverName, config);
+  }
+
+  return localSuccess && globalSuccess;
+}
+
+/**
+ * Remove server from local .mcp.json config
+ */
+function removeFromLocalConfig(serverName: string): boolean {
   try {
-    const mcpJsonPath = path.join(process.cwd(), ".mcp.json");
+    const mcpJsonPath = getLocalConfigPath();
 
     if (!fs.existsSync(mcpJsonPath)) {
       return false;
@@ -235,6 +342,55 @@ export function removeFromMcpConfig(serverName: string): boolean {
     console.error("[ServerManager] Error removing from .mcp.json:", error);
     return false;
   }
+}
+
+/**
+ * Remove server from global ~/.claude.json config
+ */
+function removeFromClaudeConfig(serverName: string): boolean {
+  try {
+    const configPath = getClaudeConfigPath();
+
+    if (!fs.existsSync(configPath)) {
+      return false;
+    }
+
+    const claudeConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+
+    if (claudeConfig.mcpServers && claudeConfig.mcpServers[serverName]) {
+      delete claudeConfig.mcpServers[serverName];
+      fs.writeFileSync(configPath, JSON.stringify(claudeConfig, null, 2));
+      console.log(`[ServerManager] Removed ${serverName} from ~/.claude.json`);
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error("[ServerManager] Error removing from ~/.claude.json:", error);
+    return false;
+  }
+}
+
+/**
+ * Remove server from MCP config
+ * Supports local (.mcp.json), global (~/.claude.json), or both
+ */
+export function removeFromMcpConfig(
+  serverName: string,
+  location: ConfigLocation = "local"
+): boolean {
+  let localRemoved = false;
+  let globalRemoved = false;
+
+  if (location === "local" || location === "both") {
+    localRemoved = removeFromLocalConfig(serverName);
+  }
+
+  if (location === "global" || location === "both") {
+    globalRemoved = removeFromClaudeConfig(serverName);
+  }
+
+  return localRemoved || globalRemoved;
 }
 
 // Load servers on module initialization

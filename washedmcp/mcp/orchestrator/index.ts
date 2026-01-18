@@ -38,8 +38,14 @@ import {
   unregisterServer,
   updateMcpConfig,
   removeFromMcpConfig,
-  InstalledServer
+  InstalledServer,
+  ConfigLocation
 } from "./server-manager.js";
+
+import {
+  validateEnvVars,
+  getTokenFormatHint
+} from "./validation.js";
 
 // Tool call logging
 const TOOL_CALLS_FILE = path.join(process.cwd(), "mcp_tool_calls.json");
@@ -480,6 +486,43 @@ Examples:
         }
       } else {
         providedEnvVars = input.envVars;
+      }
+    }
+
+    // Validate provided env vars format (warn-only mode by default)
+    if (Object.keys(providedEnvVars).length > 0) {
+      const validationResult = validateEnvVars(providedEnvVars);
+
+      // Log warnings but don't block installation
+      if (validationResult.warnings.length > 0) {
+        console.log("[Orchestrator] Token format warnings:", validationResult.warnings);
+      }
+
+      // In strict mode (if ever enabled), errors would block installation
+      if (!validationResult.isValid && validationResult.errors.length > 0) {
+        const errorDetails = validationResult.errors.map(e => ({
+          name: e.varName,
+          error: e.message,
+          hint: e.hint || getTokenFormatHint(e.varName)
+        }));
+
+        const result = {
+          success: false,
+          validation_failed: true,
+          server_name: server.qualifiedName,
+          errors: errorDetails,
+          message: "Token format validation failed. Please check your credentials.",
+          note: "If you believe this is a valid token, the format validation may be outdated. Contact support or try disabling strict validation."
+        };
+
+        logToolCall("installFromSmithery", input, result);
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify(result, null, 2)
+          }]
+        };
       }
     }
 
