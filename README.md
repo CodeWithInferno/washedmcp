@@ -40,34 +40,44 @@ One search → full context → immediate action.
 - **TOON Format** — Token-Optimized Object Notation (~30-40% fewer tokens than JSON)
 - **Multi-Language** — Python, JavaScript, TypeScript, JSX, TSX
 
-## Quick Start
+## Install
 
-### 1. Install Dependencies
+### One-liner (recommended)
 ```bash
-pip install -r requirements.txt
+curl -fsSL https://raw.githubusercontent.com/clarsbyte/washedmcp/main/install.sh | bash
+```
+Restart Claude Code. Done.
+
+### Manual
+```bash
+pip install washedmcp
 ```
 
-### 2. Index Your Codebase
-```bash
-python src/cli.py index /path/to/your/codebase
-```
-
-### 3. Search
-```bash
-python src/cli.py search "authentication flow"
-```
-
-### 4. Use with Claude Code
-Add to `.mcp.json`:
+Add to `~/.claude.json`:
 ```json
 {
   "mcpServers": {
     "washedmcp": {
-      "command": "python3",
-      "args": ["src/mcp_server.py"]
+      "command": "washedmcp"
     }
   }
 }
+```
+Restart Claude Code.
+
+## Usage
+
+After install, you get 3 tools in Claude Code:
+
+```
+# Index your project first
+index_codebase("/path/to/your/project")
+
+# Search semantically
+search_code("authentication logic")
+
+# Check status
+get_index_status()
 ```
 
 ## MCP Tools
@@ -122,19 +132,17 @@ Add to `.mcp.json`:
 
 ```
 washedmcp/
-├── src/
+├── washedmcp/            # Python package
 │   ├── parser.py         # AST parsing + call extraction
 │   ├── embedder.py       # Embedding generation
 │   ├── database.py       # ChromaDB + relationships
 │   ├── indexer.py        # Indexing orchestration
 │   ├── searcher.py       # Search + context expansion
-│   ├── summarizer.py     # Function summarization
 │   ├── toon_formatter.py # TOON output format
-│   ├── mcp_server.py     # MCP server
-│   └── cli.py            # CLI interface
-├── tests/                 # Test codebase samples
-├── docs/                  # Design documents
-└── requirements.txt       # Dependencies
+│   └── mcp_server.py     # MCP server entry point
+├── install.sh            # One-line installer
+├── pyproject.toml        # Package config
+└── requirements.txt      # Dependencies
 ```
 
 ## Context Expansion Depth
