@@ -1,123 +1,71 @@
 # WashedMCP Quick Start
 
-## 🚀 Fastest Setup (30 seconds)
+## Install
 
-### Step 1: Install
 ```bash
-pip install washedmcp
+curl -fsSL https://raw.githubusercontent.com/clarsbyte/washedmcp/main/setup-claude.sh | bash
 ```
 
-### Step 2: Add to Claude Code
-Add to `~/.claude.json`:
-```json
-{
-  "mcpServers": {
-    "washedmcp": {
-      "command": "python3",
-      "args": ["-m", "washedmcp.mcp_server"]
+Restart Claude Code.
+
+---
+
+## Usage
+
+In Claude Code, just talk naturally:
+
+```
+Index this codebase
+```
+
+```
+Search for "user authentication"
+```
+
+```
+Find where errors are handled
+```
+
+---
+
+## What you get
+
+```
+You: "search for validation logic"
+
+WashedMCP returns:
+
+  FOUND: validate() in src/auth.js:42 (85% match)
+
+  CODE:
+    function validate(data) {
+      if (!checkEmail(data.email)) return false;
+      return sanitize(data);
     }
-  }
-}
+
+  CALLS: checkEmail, sanitize
+  CALLED BY: processUser, createUser
+  SAME FILE: [sanitize, normalizeInput]
 ```
 
-### Step 3: Restart Claude Code
-```bash
-claude  # or restart your Claude Code window
-```
-
-### Step 4: Use It!
-In Claude Code, just say:
-```
-Index this codebase and search for "authentication logic"
-```
-
-That's it! 🎉
+One search = full context = no follow-up searches needed.
 
 ---
 
-## 📦 Alternative: Docker (Zero Dependencies)
+## Tips
 
-```bash
-# Run WashedMCP in Docker
-docker run -d \
-  --name washedmcp \
-  -v $(pwd):/codebase:ro \
-  -p 8080:8080 \
-  ghcr.io/clarsbyte/washedmcp:latest
-
-# Add to ~/.claude.json
-{
-  "mcpServers": {
-    "washedmcp": {
-      "command": "curl",
-      "args": ["-s", "http://localhost:8080"]
-    }
-  }
-}
-```
+- First index is slow (~1 min) - embedding model downloads once
+- Say "reindex this codebase" after big changes
+- Use "search with depth 2" for caller-of-caller chains
 
 ---
 
-## 🛠 CLI Commands
+## Troubleshooting
 
-```bash
-# Index a codebase
-washedmcp index /path/to/project
+**Python 3.14 error?** `brew install python@3.12`
 
-# Search
-washedmcp search "user authentication"
-
-# Check status
-washedmcp status
-
-# View token savings
-washedmcp stats
-```
+**Command not found?** `export PATH="$HOME/.local/bin:$PATH"`
 
 ---
 
-## 📊 Token Savings
-
-Every search saves ~35% tokens compared to JSON output:
-
-```bash
-washedmcp stats
-```
-
-```
-═══════════════════════════════════════════════════════
-           WashedMCP Token Savings Statistics
-═══════════════════════════════════════════════════════
-
-  Total Searches:           1,247
-  Tokens saved (est):       227,388
-  Average Savings:          37.01%
-
-═══════════════════════════════════════════════════════
-```
-
----
-
-## ⚠️ Troubleshooting
-
-**Python 3.14 error?**
-```bash
-brew install python@3.12
-/opt/homebrew/bin/python3.12 -m pip install washedmcp
-```
-
-**"externally-managed-environment" error?**
-```bash
-pipx install washedmcp
-```
-
-**Command not found?**
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
----
-
-## 📚 Full Documentation
-
-See [README.md](README.md) for complete documentation.
+Full docs: [README.md](README.md)
