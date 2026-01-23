@@ -24,12 +24,19 @@ echo "Detected OS: $OS"
 
 # Find suitable Python (3.10-3.13)
 find_python() {
-    for py in python3.12 python3.11 python3.10 python3.13 /usr/bin/python3.12 /usr/bin/python3.11 /usr/bin/python3.10; do
-        if command -v $py &> /dev/null; then
-            version=$($py -c 'import sys; print(sys.version_info.minor)' 2>/dev/null || echo "0")
-            if [ "$version" -ge 10 ] 2>/dev/null && [ "$version" -lt 14 ] 2>/dev/null; then
-                command -v $py
-                return 0
+    # Check multiple locations
+    for py in python3.11 python3.10 python3.12 python3.13 \
+              /usr/bin/python3.11 /usr/bin/python3.10 /usr/bin/python3.12 \
+              /usr/local/bin/python3.11 /usr/local/bin/python3.10 /usr/local/bin/python3.12; do
+        if [ -x "$py" ] || command -v $py &> /dev/null; then
+            # Get the actual path
+            actual_py=$(command -v $py 2>/dev/null || echo "$py")
+            if [ -x "$actual_py" ]; then
+                version=$($actual_py -c 'import sys; print(sys.version_info.minor)' 2>/dev/null || echo "0")
+                if [ "$version" -ge 10 ] 2>/dev/null && [ "$version" -lt 14 ] 2>/dev/null; then
+                    echo "$actual_py"
+                    return 0
+                fi
             fi
         fi
     done
@@ -69,45 +76,39 @@ install_python_debian() {
     # Fix apt sources first
     fix_apt_sources
 
-    # Try multiple Python versions, newest first
-    for pyver in 3.12 3.11 3.10; do
+    # Add deadsnakes PPA
+    echo "Adding deadsnakes PPA..."
+    sudo add-apt-repository -y ppa:deadsnakes/ppa 2>/dev/null || true
+    sudo apt-get update 2>/dev/null || true
+
+    # Try multiple Python versions
+    for pyver in 3.11 3.10 3.12; do
         echo "Trying Python $pyver..."
 
-        # Add deadsnakes PPA if not present
-        if ! grep -q "deadsnakes" /etc/apt/sources.list.d/* 2>/dev/null; then
-            sudo add-apt-repository -y ppa:deadsnakes/ppa 2>/dev/null || true
-            sudo apt-get update -qq 2>/dev/null || true
-        fi
+        # Try to install
+        sudo apt-get install -y python$pyver 2>/dev/null || true
 
-        # Try to install (only base package, skip venv/distutils if not available)
-        if sudo apt-get install -y python$pyver 2>/dev/null; then
-            # Try optional packages but don't fail if missing
-            sudo apt-get install -y python$pyver-venv 2>/dev/null || true
-            sudo apt-get install -y python$pyver-distutils 2>/dev/null || true
+        # Check if it actually installed
+        if command -v python$pyver &> /dev/null || [ -x "/usr/bin/python$pyver" ]; then
+            echo "Python $pyver found!"
 
-            # Install pip via get-pip.py (most reliable method)
-            echo "Installing pip..."
-            curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
-            sudo python$pyver /tmp/get-pip.py 2>/dev/null || python$pyver /tmp/get-pip.py --user 2>/dev/null || true
+            # Install pip
+            echo "Installing pip for Python $pyver..."
+            curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py 2>/dev/null
+            python$pyver /tmp/get-pip.py --user 2>/dev/null || sudo python$pyver /tmp/get-pip.py 2>/dev/null || true
             rm -f /tmp/get-pip.py
 
-            if command -v python$pyver &> /dev/null; then
-                echo "Python $pyver installed successfully"
-                return 0
-            fi
+            return 0
         fi
     done
 
-    # Last resort: try system python3 upgrade or install from source
-    echo "PPA installation failed, trying alternative methods..."
-
-    # Check if we can use existing python3 with version upgrade
-    if command -v python3 &> /dev/null; then
-        pyver=$(python3 -c 'import sys; print(sys.version_info.minor)')
-        if [ "$pyver" -ge 10 ] 2>/dev/null; then
+    # Check if any python 3.10+ is now available
+    for pyver in 3.11 3.10 3.12; do
+        if [ -x "/usr/bin/python$pyver" ]; then
+            echo "Found /usr/bin/python$pyver"
             return 0
         fi
-    fi
+    done
 
     return 1
 }
